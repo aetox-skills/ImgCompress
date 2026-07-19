@@ -1,6 +1,9 @@
 import functools
 from io import BytesIO
+from pathlib import Path
 
+from PIL import Image
+from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import Headers, UploadFile
 from starlette.requests import Request
 
@@ -8,6 +11,36 @@ from ..config import DEFAULT_CONFIG
 from ..core import compress
 
 _COMPRESS_KEYS = ("quality", "max_width", "max_height", "fmt", "max_file_size")
+
+_MIME = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp",
+          "BMP": "image/bmp", "TIFF": "image/tiff", "GIF": "image/gif", "HEIF": "image/heif"}
+_EXT = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp",
+         "BMP": ".bmp", "TIFF": ".tiff", "GIF": ".gif", "HEIF": ".heic"}
+
+
+def _describe(data: bytes, original_filename: str | None) -> tuple[str, str]:
+    """คืน (filename, content_type) ให้ตรงกับ format จริงของ bytes หลังบีบ
+
+    compress() อาจคืนของเดิมเป๊ะๆ (passthrough) หรือแปลง format ไปเลยก็ได้ —
+    เช็คจากเนื้อไฟล์จริงเสมอ ไม่เดาจาก fmt setting เพื่อให้ถูกต้องทุกเคส
+    """
+    try:
+        fmt = Image.open(BytesIO(data)).format
+    except Exception:
+        fmt = None
+    if fmt not in _MIME:
+        return original_filename or "file", "application/octet-stream"
+    stem = Path(original_filename).stem if original_filename else "file"
+    return f"{stem}{_EXT[fmt]}", _MIME[fmt]
+
+
+async def _compress_upload(value: UploadFile, kwargs: dict) -> UploadFile:
+    data = await run_in_threadpool(compress, value, **kwargs)  # Pillow เป็น sync, offload ไม่ให้บล็อก event loop
+    filename, content_type = _describe(data, value.filename)
+    return UploadFile(
+        BytesIO(data), size=len(data), filename=filename,
+        headers=Headers({"content-type": content_type}),
+    )
 
 
 def CompressUpload(**overrides):
@@ -19,10 +52,10 @@ def CompressUpload(**overrides):
         async def wrapper(*args, **fn_kwargs):
             for key, value in list(fn_kwargs.items()):
                 if isinstance(value, UploadFile):
-                    fn_kwargs[key] = BytesIO(compress(value, **kwargs))
+                    fn_kwargs[key] = await _compress_upload(value, kwargs)
                 elif isinstance(value, list) and any(isinstance(v, UploadFile) for v in value):
                     fn_kwargs[key] = [
-                        BytesIO(compress(v, **kwargs)) if isinstance(v, UploadFile) else v
+                        await _compress_upload(v, kwargs) if isinstance(v, UploadFile) else v
                         for v in value
                     ]
             return await handler(*args, **fn_kwargs)
@@ -68,7 +101,7 @@ class ImgCompress:
 
         form = await Request(scope, replay).form()
         boundary = content_type.split("boundary=", 1)[1].strip('"')
-        new_body = _rebuild_multipart(form, boundary, self._kwargs)
+        new_body = await _rebuild_multipart(form, boundary, self._kwargs)
 
         scope = dict(scope)
         scope["headers"] = [(k, v) for k, v in scope["headers"] if k != b"content-length"]
@@ -86,16 +119,17 @@ class ImgCompress:
         await self.app(scope, new_receive, send)
 
 
-def _rebuild_multipart(form, boundary: str, compress_kwargs: dict) -> bytes:
+async def _rebuild_multipart(form, boundary: str, compress_kwargs: dict) -> bytes:
     boundary_bytes = boundary.encode()
     body = bytearray()
     for key, value in form.multi_items():
         body += b"--" + boundary_bytes + b"\r\n"
         if isinstance(value, UploadFile):
-            data = compress(value, **compress_kwargs)
+            data = await run_in_threadpool(compress, value, **compress_kwargs)  # ไม่บล็อก event loop
+            filename, content_type = _describe(data, value.filename)  # content-type/นามสกุลต้องตรง format จริงหลังบีบ
             body += (
-                f'Content-Disposition: form-data; name="{key}"; filename="{value.filename}"\r\n'
-                f"Content-Type: {value.content_type}\r\n\r\n"
+                f'Content-Disposition: form-data; name="{key}"; filename="{filename}"\r\n'
+                f"Content-Type: {content_type}\r\n\r\n"
             ).encode()
             body += data
         else:

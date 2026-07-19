@@ -63,6 +63,9 @@ app.add_middleware(ImgCompress, quality=75)
 - **ไฟล์เสีย / ไม่ใช่รูป / format ที่ไม่รู้จัก** — คืนไฟล์เดิม ไม่ crash
 - **Decompression bomb** — ภาพเกิน ~89M pixel ถูกปฏิเสธโดย Pillow → คืนไฟล์เดิม
 - **ไฟล์มหึมา** — ตั้ง `max_file_size` แล้วไฟล์เกินขนาดจะถูกข้ามก่อนแตะ decode เลย ไม่เสีย CPU/RAM
+- **ไม่บล็อก event loop** — decorator/middleware รัน `compress()` (sync) ผ่าน `run_in_threadpool` ของ Starlette เสมอ
+- **`UploadFile` ยังเป็น `UploadFile`** — decorator คืน object ที่มี `.filename`/`.content_type`/`await .read()` ใช้ได้เหมือนเดิม ไม่ใช่ `BytesIO` เปล่าๆ
+- **filename/content-type ตรงกับ format จริงหลังบีบ** — อัปโหลด `.png` แล้วถูกแปลงเป็น jpeg (ตาม `fmt` default) จะได้ `.jpg` / `image/jpeg` กลับมา ไม่ใช่ metadata เดิมที่โกหก
 - ตรวจ format จากเนื้อไฟล์จริง ไม่เชื่อ extension/Content-Type
 - **รับ input ได้หลาย format**: JPEG, PNG, WebP, BMP, TIFF, GIF (นิ่ง), HEIC/HEIF (ต้องลง `imgcompress[heif]`) — แปลงเป็น `fmt` ที่ตั้งไว้ให้อัตโนมัติ (default `jpeg`)
 

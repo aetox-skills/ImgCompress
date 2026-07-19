@@ -136,8 +136,14 @@ def test_decorator_list_uploadfile():
 
     uploads = [UploadFile(BytesIO(_make_jpeg()), filename=f"{i}.jpg") for i in range(2)]
     result = asyncio.run(handler(files=uploads))
-    assert all(isinstance(f, BytesIO) for f in result)
-    assert all(Image.open(f).width <= 1920 for f in result)
+    assert all(isinstance(f, UploadFile) for f in result), "ต้องยังเป็น UploadFile รักษา contract เดิม"
+
+    async def _check():
+        for f in result:
+            data = await f.read()
+            assert Image.open(BytesIO(data)).width <= 1920
+
+    asyncio.run(_check())
 
 
 if __name__ == "__main__":

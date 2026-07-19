@@ -114,6 +114,44 @@ def test_decorator_metadata_matches_real_output_format():
     assert body["content_type"] == "image/jpeg", f"content-type ต้องตรง format จริง: {body}"
 
 
+def test_middleware_skips_buffering_over_content_length_cap():
+    """content-length เกิน max_file_size ต้องข้ามไปเลย ไม่ buffer body เองซ้ำ"""
+    import asyncio
+
+    async def run():
+        body = _make_jpeg()
+        receive_calls = []
+
+        async def receive():
+            receive_calls.append(1)
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        downstream_reads = []
+
+        async def downstream_app(scope, receive, send):
+            downstream_reads.append(await receive())
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            await send({"type": "http.response.body", "body": b""})
+
+        mw = ImgCompress(downstream_app, max_file_size=1000)  # เล็กกว่า _make_jpeg() มากแน่ๆ
+        scope = {
+            "type": "http",
+            "headers": [
+                (b"content-type", b"multipart/form-data; boundary=X"),
+                (b"content-length", str(len(body)).encode()),
+            ],
+        }
+
+        async def send(message):
+            pass
+
+        await mw(scope, receive, send)
+        assert len(receive_calls) == 1, "middleware ต้องไม่วน receive() เพื่อ buffer เอง เมื่อรู้อยู่แล้วว่าเกิน max_file_size"
+        assert downstream_reads[0]["body"] == body, "ต้องส่ง body เดิมตรงๆ ให้ downstream อ่านเอง"
+
+    asyncio.run(run())
+
+
 def test_compress_runs_off_event_loop():
     """compress() ต้องรันใน threadpool ไม่ใช่ inline บน event loop thread"""
     main_thread_id = threading.get_ident()
@@ -148,5 +186,6 @@ if __name__ == "__main__":
     test_middleware_metadata_matches_real_output_format()
     test_decorator_preserves_uploadfile_contract()
     test_decorator_metadata_matches_real_output_format()
+    test_middleware_skips_buffering_over_content_length_cap()
     test_compress_runs_off_event_loop()
     print("ok")

@@ -46,6 +46,9 @@ def compress(
     min_file_size: int = DEFAULT_CONFIG["min_file_size"],
     max_file_size: int = DEFAULT_CONFIG["max_file_size"],
 ) -> bytes:
+    if fmt != "auto" and fmt not in _SAVE_FORMAT:
+        raise ValueError(f"invalid fmt: {fmt!r}, must be one of: auto, {', '.join(_SAVE_FORMAT)}")
+
     original = _read_bytes(file)
 
     if len(original) < min_file_size:
@@ -86,7 +89,9 @@ def compress(
         else:
             img = img.convert("RGB")
 
-    if out_format in ("JPEG", "WEBP"):
+    if out_format == "JPEG":
+        save_kwargs = {"quality": quality, "optimize": True}
+    elif out_format == "WEBP":
         save_kwargs = {"quality": quality}
     elif out_format == "PNG":
         save_kwargs = {"optimize": True}

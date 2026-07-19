@@ -84,9 +84,15 @@ class ImgCompress:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
 
-        content_type = Headers(scope=scope).get("content-type", "")
+        headers = Headers(scope=scope)
+        content_type = headers.get("content-type", "")
         if not content_type.startswith("multipart/form-data") or "boundary=" not in content_type:
             return await self.app(scope, receive, send)
+
+        max_file_size = self._kwargs.get("max_file_size")
+        content_length = headers.get("content-length")
+        if max_file_size and content_length and int(content_length) > max_file_size:
+            return await self.app(scope, receive, send)  # เกินขนาดแน่ๆ ข้ามก่อน buffer ทั้งก้อนเข้า RAM
 
         chunks = []
         while True:

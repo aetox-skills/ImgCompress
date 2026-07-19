@@ -1,11 +1,11 @@
 [project]
 name = "imgcompress"
-version = "1.2.0"
+version = "1.2.1"
 description = "Compress images automatically before storage — function, decorator, or middleware. Framework-agnostic."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
-dependencies = ["Pillow"]
+dependencies = ["Pillow>=9.1.0"]
 keywords = ["image", "compress", "upload", "fastapi", "middleware", "pillow"]
 classifiers = [
     "Programming Language :: Python :: 3",

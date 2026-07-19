@@ -61,8 +61,8 @@ app.add_middleware(ImgCompress, quality=75)
 - **โปร่งใส → JPEG** — composite ลงพื้นขาว ไม่ใช่สีขยะใต้ alpha channel
 - **Animated GIF/WebP** — คืนไฟล์เดิม ไม่ทำ animation หายเงียบๆ
 - **ไฟล์เสีย / ไม่ใช่รูป / format ที่ไม่รู้จัก** — คืนไฟล์เดิม ไม่ crash
-- **Decompression bomb** — ภาพเกิน ~89M pixel ถูกปฏิเสธโดย Pillow → คืนไฟล์เดิม
-- **ไฟล์มหึมา** — ตั้ง `max_file_size` แล้วไฟล์เกินขนาดจะถูกข้ามก่อนแตะ decode เลย ไม่เสีย CPU/RAM
+- **Decompression bomb (pixel count)** — ภาพที่ decode แล้วเกิน ~179M pixel ถูก Pillow ปฏิเสธการ decode เสมอ (ไม่ต้องตั้งค่าอะไร) — แต่ **ไม่ได้ปฏิเสธ request** แค่ข้าม compress แล้วคืนไฟล์ต้นฉบับ (byte เดิม) กลับไปเหมือนเดิมทุกประการ ตัดสินใจเรื่อง reject/accept เป็นหน้าที่ของโค้ดที่เรียกใช้
+- **ไฟล์ใหญ่ผิดปกติ (byte size)** — Pillow เช็คแค่ pixel count ไม่เช็ค byte size ถ้าอยากกันไฟล์ใหญ่ผิดปกติ (เช่น TIFF บิตลึก) ต้องตั้ง `max_file_size` เอง — **default คือไม่จำกัด** ตั้งแล้วไฟล์เกินขนาดจะถูกข้ามก่อนแตะ decode เลย (middleware เช็คจาก `Content-Length` header ก่อน buffer body ด้วยซ้ำ ถ้า header มีมา)
 - **ไม่บล็อก event loop** — decorator/middleware รัน `compress()` (sync) ผ่าน `run_in_threadpool` ของ Starlette เสมอ
 - **`UploadFile` ยังเป็น `UploadFile`** — decorator คืน object ที่มี `.filename`/`.content_type`/`await .read()` ใช้ได้เหมือนเดิม ไม่ใช่ `BytesIO` เปล่าๆ
 - **filename/content-type ตรงกับ format จริงหลังบีบ** — อัปโหลด `.png` แล้วถูกแปลงเป็น jpeg (ตาม `fmt` default) จะได้ `.jpg` / `image/jpeg` กลับมา ไม่ใช่ metadata เดิมที่โกหก

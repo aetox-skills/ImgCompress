@@ -21,6 +21,32 @@ def test_resizes_and_shrinks():
     assert resized.width <= 1920 and resized.height <= 1080
 
 
+def test_invalid_fmt_raises_valueerror():
+    try:
+        compress(_make_jpeg(), fmt="jpg")  # ผิด ต้องเป็น "jpeg"
+        assert False, "ต้อง raise ValueError"
+    except ValueError as e:
+        assert "jpg" in str(e) and "jpeg" in str(e)
+
+
+def test_jpeg_uses_optimize():
+    captured = {}
+    real_save = Image.Image.save
+
+    def spy_save(self, fp, format=None, **kwargs):
+        if format == "JPEG":
+            captured.update(kwargs)
+        return real_save(self, fp, format=format, **kwargs)
+
+    Image.Image.save = spy_save
+    try:
+        compress(_make_jpeg(), quality=75)
+    finally:
+        Image.Image.save = real_save
+
+    assert captured.get("optimize") is True, f"JPEG save ต้องส่ง optimize=True, ได้ {captured}"
+
+
 def test_never_grows():
     tiny = _make_jpeg(50, 50)
     out = compress(tiny, quality=100)
@@ -148,6 +174,8 @@ def test_decorator_list_uploadfile():
 
 if __name__ == "__main__":
     test_resizes_and_shrinks()
+    test_invalid_fmt_raises_valueerror()
+    test_jpeg_uses_optimize()
     test_never_grows()
     test_unsupported_format_passthrough()
     test_min_file_size_skips()

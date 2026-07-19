@@ -1,6 +1,6 @@
 [project]
 name = "imgcompress"
-version = "0.1.0"
+version = "1.0.0"
 description = "Compress images automatically before storage — function, decorator, or middleware. Framework-agnostic."
 readme = "README.md"
 license = { text = "MIT" }

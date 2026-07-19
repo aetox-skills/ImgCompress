@@ -52,6 +52,7 @@ app.add_middleware(ImgCompress, quality=75)
 | `fmt` | `"jpeg"` | format ปลายทาง: `jpeg` \| `webp` \| `png` \| `auto` (คงของเดิม) |
 | `strip_metadata` | `True` | ลบ EXIF (หลัง apply orientation แล้ว) |
 | `min_file_size` | `0` | ไฟล์เล็กกว่านี้ (bytes) → ข้าม ไม่บีบ |
+| `max_file_size` | `0` (ไม่จำกัด) | ไฟล์ใหญ่กว่านี้ (bytes) → ข้ามทันที ไม่ถอดรหัส (กัน CPU/RAM เปลืองกับไฟล์มหึมา) |
 
 ## สิ่งที่จัดการให้ (ที่เขียนเองแล้วมักพลาด)
 
@@ -61,6 +62,7 @@ app.add_middleware(ImgCompress, quality=75)
 - **Animated GIF/WebP** — คืนไฟล์เดิม ไม่ทำ animation หายเงียบๆ
 - **ไฟล์เสีย / ไม่ใช่รูป / format ที่ไม่รู้จัก** — คืนไฟล์เดิม ไม่ crash
 - **Decompression bomb** — ภาพเกิน ~89M pixel ถูกปฏิเสธโดย Pillow → คืนไฟล์เดิม
+- **ไฟล์มหึมา** — ตั้ง `max_file_size` แล้วไฟล์เกินขนาดจะถูกข้ามก่อนแตะ decode เลย ไม่เสีย CPU/RAM
 - ตรวจ format จากเนื้อไฟล์จริง ไม่เชื่อ extension/Content-Type
 - **รับ input ได้หลาย format**: JPEG, PNG, WebP, BMP, TIFF, GIF (นิ่ง), HEIC/HEIF (ต้องลง `imgcompress[heif]`) — แปลงเป็น `fmt` ที่ตั้งไว้ให้อัตโนมัติ (default `jpeg`)
 

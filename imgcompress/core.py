@@ -44,11 +44,15 @@ def compress(
     fmt: str = DEFAULT_CONFIG["fmt"],
     strip_metadata: bool = DEFAULT_CONFIG["strip_metadata"],
     min_file_size: int = DEFAULT_CONFIG["min_file_size"],
+    max_file_size: int = DEFAULT_CONFIG["max_file_size"],
 ) -> bytes:
     original = _read_bytes(file)
 
     if len(original) < min_file_size:
         return original
+
+    if max_file_size and len(original) > max_file_size:
+        return original  # ใหญ่เกินไป ไม่คุ้มถอดรหัส — คืนของเดิม ไม่พยายามบีบ
 
     try:
         img = Image.open(BytesIO(original))

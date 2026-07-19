@@ -5,4 +5,5 @@ DEFAULT_CONFIG = {
     "fmt": "jpeg",       # jpeg | webp | png | auto (keep original)
     "strip_metadata": True,
     "min_file_size": 0,  # bytes — ข้ามไฟล์ที่เล็กกว่านี้
+    "max_file_size": 0,  # bytes — ข้ามไฟล์ที่ใหญ่กว่านี้ (0 = ไม่จำกัด), กันเปลือง CPU ถอดรหัสไฟล์มหึมา
 }

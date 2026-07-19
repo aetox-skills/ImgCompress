@@ -7,7 +7,7 @@ from starlette.requests import Request
 from ..config import DEFAULT_CONFIG
 from ..core import compress
 
-_COMPRESS_KEYS = ("quality", "max_width", "max_height", "fmt")
+_COMPRESS_KEYS = ("quality", "max_width", "max_height", "fmt", "max_file_size")
 
 
 def CompressUpload(**overrides):

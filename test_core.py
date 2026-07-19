@@ -38,6 +38,12 @@ def test_min_file_size_skips():
     assert out == original
 
 
+def test_max_file_size_skips_decode():
+    original = _make_jpeg()
+    out = compress(original, max_file_size=10)  # ไฟล์จริงใหญ่กว่านี้แน่ๆ
+    assert out == original
+
+
 def test_exif_orientation_applied():
     img = Image.new("RGB", (200, 100), (255, 0, 0))
     exif = Image.Exif()
@@ -139,6 +145,7 @@ if __name__ == "__main__":
     test_never_grows()
     test_unsupported_format_passthrough()
     test_min_file_size_skips()
+    test_max_file_size_skips_decode()
     test_exif_orientation_applied()
     test_rgba_composites_white()
     test_animated_passthrough()
